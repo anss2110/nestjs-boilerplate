@@ -1,5 +1,6 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -23,17 +24,47 @@ async function bootstrap() {
     }),
   );
 
-  // 3. Pasang Interceptor untuk format response sukses
+  // 3. Pasang Global Interceptor untuk format response sukses
   app.useGlobalInterceptors(new ResponseInterceptor());
 
-  // 4. Pasang Filter untuk format response error
+  // 4. Pasang Global Filter untuk format response error
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // 5. Enable CORS
+  // 5. Pasang Swagger
+  const config = new DocumentBuilder()
+    .setTitle('Ikigai API Documentation')
+    .setDescription(
+      'Dokumentasi resmi untuk backend boilerplate & microservices Ikigai.',
+    )
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Masukkan token JWT Anda di sini',
+        in: 'header',
+      },
+      'JWT-auth', // Ini adalah nama referensi untuk security auth
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  // Swagger akan bisa diakses di http://localhost:3000/docs
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true, // Menyimpan token di browser walau di-refresh
+    },
+  });
+
+  // 6. Enable CORS
   app.enableCors();
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`🚀 Boilerplate is running on: http://localhost:${port}/api/v1`);
+  const host = process.env.HOST || 'localhost';
+  await app.listen(port, host);
+  console.log(`🚀 Boilerplate is running on: http://${host}:${port}/api/v1`);
+  console.log(`📚 Swagger Docs is available at: http://${host}:${port}/docs`);
 }
 bootstrap();
